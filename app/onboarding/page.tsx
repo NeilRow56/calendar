@@ -14,37 +14,68 @@ import { Label } from "@/components/ui/label";
 import React from "react";
 
 import { useFormState } from "react-dom";
+import { onboardingAction } from "../actions";
+import { useForm } from "@conform-to/react";
+import { parseWithZod } from "@conform-to/zod";
+import { onboardingSchemaLocale } from "@/lib/zodSchemas";
 
 const OnboardingPage = () => {
+  const [lastResult, action] = useFormState(onboardingAction, undefined);
+
+  const [form, fields] = useForm({
+    // Sync the result of last submission
+
+    lastResult,
+
+    // Reuse the validation logic on the client
+    onValidate({ formData }) {
+      return parseWithZod(formData, { schema: onboardingSchemaLocale });
+    },
+
+    // Validate the form on blur event triggered
+    shouldValidate: "onBlur",
+    shouldRevalidate: "onInput",
+  });
+
   return (
     <div className="flex h-screen w-screen items-center justify-center">
       <Card>
         <CardHeader>
-          <CardTitle>
-            <p className="text-xl font-bold">
-              Welcome to Cal<span className="text-primary">Marshal</span>
-            </p>
-          </CardTitle>
+          <CardTitle>Welcome to CalMarshal</CardTitle>
           <CardDescription>
             We need the following information to set up your profile
           </CardDescription>
         </CardHeader>
 
-        <form>
+        <form id={form.id} onSubmit={form.onSubmit} action={action} noValidate>
           <CardContent className="flex flex-col gap-y-5">
             <div className="grid gap-y-2">
               <Label>Full Name</Label>
-              <Input placeholder="Jan marshal" />
+              <Input
+                name={fields.fullName.name}
+                defaultValue={fields.fullName.initialValue}
+                key={fields.fullName.key}
+                placeholder="Example Name"
+              />
+              <p className="text-sm text-red-500">{fields.fullName.errors}</p>
             </div>
             <div className="grid gap-y-2">
               <Label>Username</Label>
 
               <div className="flex rounded-md">
                 <span className="inline-flex items-center rounded-l-md border border-r-0 border-muted bg-muted px-3 text-sm text-muted-foreground">
-                  CalMarshal.com
+                  CalMarshal.com/
                 </span>
-                <Input />
+                <Input
+                  type="text"
+                  key={fields.username.key}
+                  defaultValue={fields.username.initialValue}
+                  name={fields.username.name}
+                  placeholder="example-user-1"
+                  className="rounded-l-none"
+                />
               </div>
+              <p className="text-sm text-red-500">{fields.username.errors}</p>
             </div>
           </CardContent>
           <CardFooter className="w-full">
