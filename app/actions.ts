@@ -6,7 +6,11 @@ import { redirect } from "next/navigation";
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/hooks";
-import { aboutSettingsSchema, onboardingSchema } from "@/lib/zodSchemas";
+import {
+  aboutSettingsSchema,
+  eventTypeSchema,
+  onboardingSchema,
+} from "@/lib/zodSchemas";
 import prisma from "@/lib/db";
 
 export async function onboardingAction(prevState: any, formData: FormData) {
@@ -138,7 +142,73 @@ export async function updateAvailabilityAction(formData: FormData) {
         }),
       ),
     );
+
+    revalidatePath("/dashboard/availability");
   } catch (error) {
     console.error("Error updating availability:", error);
+  }
+}
+
+export async function CreateEventTypeAction(
+  prevState: any,
+  formData: FormData,
+) {
+  const session = await requireUser();
+
+  const submission = parseWithZod(formData, {
+    schema: eventTypeSchema,
+  });
+
+  if (submission.status !== "success") {
+    return submission.reply();
+  }
+
+  const data = await prisma.eventType.create({
+    data: {
+      title: submission.value.title,
+      duration: submission.value.duration,
+      url: submission.value.url,
+      description: submission.value.description,
+      userId: session.user?.id as string,
+      videoCallSoftware: submission.value.videoCallSoftware,
+    },
+  });
+
+  return redirect("/dashboard");
+}
+
+export async function updateEventTypeStatusAction(
+  prevState: any,
+  {
+    eventTypeId,
+    isChecked,
+  }: {
+    eventTypeId: string;
+    isChecked: boolean;
+  },
+) {
+  try {
+    const session = await requireUser();
+
+    const data = await prisma.eventType.update({
+      where: {
+        id: eventTypeId,
+        userId: session.user?.id as string,
+      },
+      data: {
+        active: isChecked,
+      },
+    });
+
+    revalidatePath(`/dashboard`);
+    return {
+      status: "success",
+      message: "EventType Status updated successfully",
+    };
+  } catch (error) {
+    return {
+      status: "error",
+      message: "Something went wrong",
+    };
   }
 }
